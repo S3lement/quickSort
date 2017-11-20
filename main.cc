@@ -6,7 +6,8 @@
 #include <cstring>
 #include <cmath>
 #include <algorithm>    // std::sort
-#include "mpi.h"
+#include <mpi/mpi.h>
+
 
 using namespace std;
 
@@ -170,25 +171,23 @@ void quickSort(int*& data, int& taille) {
     }
 }
 
-void printAll(int *data, int taille) {
-    int p, myPE;
-    MPI_Comm_size(MPI_COMM_WORLD, &p);
-    MPI_Comm_rank(MPI_COMM_WORLD, &myPE);
+void printAll(int* data,int taille) {
+    int p,myPE;
+    MPI_Comm_size(MPI_COMM_WORLD,&p);
+    MPI_Comm_rank(MPI_COMM_WORLD,&myPE);
     int *recvcounts, *displs, *recvbuf;
-    if (myPE == 0)
-        recvcounts = new int[p];
-    MPI_Gather(&taille, 1, MPI_INT, recvcounts, 1, MPI_INT, 0, MPI_COMM_WORLD);
+    if (myPE == 0) recvcounts = new int[p];
+    MPI_Gather(&taille,1,MPI_INT,recvcounts,1,MPI_INT,0,MPI_COMM_WORLD);
     if (myPE == 0) {
         displs = new int[p];
         displs[0] = 0;
-        for (int pe = 1; pe < p; pe++) displs[pe] = displs[pe - 1] + recvcounts[pe - 1];
-        recvbuf = new int[displs[p - 1] + recvcounts[p - 1]];
+        for (int pe=1;pe<p;pe++) displs[pe] = displs[pe-1]+recvcounts[pe-1];
+        recvbuf = new int[displs[p-1]+recvcounts[p-1]];
     }
-    MPI_Gatherv(data, taille, MPI_INT, recvbuf, recvcounts, displs, MPI_INT, 0, MPI_COMM_WORLD);
+    MPI_Gatherv(data,taille,MPI_INT,recvbuf,recvcounts,displs,MPI_INT,0,MPI_COMM_WORLD);
     if (myPE == 0)
-        for (int k = 0; k < p * taille; k++) cout << recvbuf[k] << endl;
-    if (myPE == 0)
-        delete recvbuf, recvcounts, displs;
+        for (int k=0;k<displs[p-1]+recvcounts[p-1];k++) cout << recvbuf[k] << endl;
+    if (myPE == 0) delete recvbuf,recvcounts,displs;
 }
 
 

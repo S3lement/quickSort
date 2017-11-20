@@ -17,19 +17,19 @@ void reunion(int* dataInf, int tailleInf, int* dataSup, int tailleSup, int*& dat
     delete[] data;
     data = new int[taille];
 
-    int cptData = 0;
+    int inf = 0;
+	 int sup = 0;
 
-    for (int i = 0; i < tailleInf; i++) {
-        data[cptData] = dataInf[i];
-        cptData++;
+    for (int i = 0; i < taille; i++) {
+		  if(sup >= tailleSup || (inf < tailleInf && dataInf[inf] < dataSup[sup])){
+		     data[i] = dataInf[inf];
+			  inf++;
+		  }else{
+			  data[i] = dataSup[sup];
+			  sup++;
+		  }
+        
     }
-
-    for (int j = 0; j < tailleSup; j++) {
-        data[cptData] = dataSup[j];
-        cptData++;
-    }
-
-    sort(data, data + taille);
 
 }
 

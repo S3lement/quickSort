@@ -11,31 +11,50 @@
 
 using namespace std;
 
-void reunion(int* dataInf, int tailleInf, int* dataSup, int tailleSup, int*& data, int& taille) {
+/**
+ * Fait la reunion entre le tableau inférieur et supérieur dans le global
+ * @param dataInf tableau des valeurs inférieur
+ * @param tailleInf taille du tableau inférieur
+ * @param dataSup tableau des valeurs supérieur
+ * @param tailleSup taille du tableau supérieur
+ * @param data tableau global
+ * @param taille taille du tableau global
+ */
+void reunion(int *dataInf, int tailleInf, int *dataSup, int tailleSup, int *&data, int &taille) {
     taille = tailleInf + tailleSup;
 
     delete[] data;
     data = new int[taille];
 
     int inf = 0;
-	 int sup = 0;
+    int sup = 0;
 
     for (int i = 0; i < taille; i++) {
-		  if(sup >= tailleSup || (inf < tailleInf && dataInf[inf] < dataSup[sup])){
-		     data[i] = dataInf[inf];
-			  inf++;
-		  }else{
-			  data[i] = dataSup[sup];
-			  sup++;
-		  }
-        
+        if (sup >= tailleSup || (inf < tailleInf && dataInf[inf] < dataSup[sup])) {
+            data[i] = dataInf[inf];
+            inf++;
+        } else {
+            data[i] = dataSup[sup];
+            sup++;
+        }
+
     }
 
 }
 
-void partition(int pivot, int* data, int taille, int*& dataInf, int& tailleInf, int*& dataSup, int& tailleSup) {
+/**
+ * Partitionne le tableau global dans les tableau supérieur ou inférieur en fonction du pivot
+ * @param pivot
+ * @param data tableau global
+ * @param taille taille du tableau global
+ * @param dataInf tableau des valeurs inférieur
+ * @param tailleInf taille du tableau inférieur
+ * @param dataSup tableau des valeurs supérieur
+ * @param tailleSup taille du tableau supérieur
+ */
+void partition(int pivot, int *data, int taille, int *&dataInf, int &tailleInf, int *&dataSup, int &tailleSup) {
     tailleInf = 0;
-	 tailleSup = 0;
+    tailleSup = 0;
 
     for (int i = 0; i < taille; i++) {
         if (data[i] < pivot) {
@@ -51,7 +70,7 @@ void partition(int pivot, int* data, int taille, int*& dataInf, int& tailleInf, 
     dataSup = new int[tailleSup];
 
     int inf = 0;
-	 int sup = 0;
+    int sup = 0;
 
     for (int i = 0; i < taille; i++) {
         if (data[i] < pivot) {
@@ -64,12 +83,19 @@ void partition(int pivot, int* data, int taille, int*& dataInf, int& tailleInf, 
     }
 }
 
-void exchange(int*& data, int& taille, int etape) {
+/**
+ * Echange le tableau supérieur ou inférieur au noeud correspondant
+ * @param data tableau inférieur ou supérieur dépendant du myPE
+ * @param taille taille du tableau data
+ * @param etape numéro de l'étape
+ */
+void exchange(int *&data, int &taille, int etape) {
     int p, myPE;
     MPI_Comm_size(MPI_COMM_WORLD, &p);
     MPI_Comm_rank(MPI_COMM_WORLD, &myPE);
 
-    int numEnvoyeur = myPE ^ (0x1 << etape - 1);
+    //echange le bit de l'étape pour savoir à qui envoyer
+    int numEnvoyeur = myPE ^(0x1 << etape - 1);
 
     MPI_Send(&taille, 1, MPI_INT, numEnvoyeur, 666, MPI_COMM_WORLD);
     if (taille > 0) {
@@ -84,61 +110,44 @@ void exchange(int*& data, int& taille, int etape) {
     }
 }
 
-void diffusion(int& pivot, int etape, int* data, int& taille) {
-    /*J'ai un bug dans ma fonction
-	 int p, myPE;
+/**
+ * Diffuse le pivot a tout le monde en fonction de l'étape
+ * @param pivot
+ * @param etape numéro de l'étape
+ * @param data tableau global
+ * @param taille taille du tableau global
+ */
+void diffusion(int &pivot, int etape, int *data, int &taille) {
+    int p, myPE;
     MPI_Comm_size(MPI_COMM_WORLD, &p);
     MPI_Comm_rank(MPI_COMM_WORLD, &myPE);
-    int nbSender = -1;
-    int dec;
-    int dimension = log2(p);
 
-    if ((myPE % (int) pow(2.0, (double) etape)) == 0) {
+    int diffuseur;
+    if (etape == log2(p)) {
+        diffuseur = 0;
+    } else {
+        diffuseur = ((myPE >> etape) << etape);
+    }
+
+    if(myPE == diffuseur){
         pivot = data[taille / 2];
-        nbSender = myPE;
     }
 
-    if (nbSender == -1) {
-        MPI_Recv(&pivot, 1, MPI_INT, MPI_ANY_SOURCE, 666, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-        //cout << "recv " << pivot << endl;
-    }
-
-    int nbSousHyperCube = pow(2, dimension - etape);
     for (int i = 0; i < etape; i++) {
-        for (int j = 0; j < nbSousHyperCube; j++) {
-            int dec = pow(2, i);
-            if (myPE < dec + (pow(2, etape) * j)) {
-                MPI_Send(&pivot, 1, MPI_INT, myPE + dec, 666, MPI_COMM_WORLD);
-                //cout << "send to " << myPE + dec << " by " << myPE << endl;
-            }
-        }
-    }*/
-	 // Send pivot depending on the etape
-    int p, myPE;
-    MPI_Comm_size(MPI_COMM_WORLD,&p);
-    MPI_Comm_rank(MPI_COMM_WORLD,&myPE);
-
-    // Root is the process of broadcast
-    int root;
-    if (etape == log2(p))
-        root = 0;
-    else
-        root = ((myPE >> etape) << etape);
-
-    // myPE - root = relative index in sub-hypercube of dimension i
-    for (int k = 0; k < etape; k++) {
-        if ((myPE - root) < (0x1 << k)) {
-            // Send the pivot
-            MPI_Send(&pivot, 1, MPI_INT, myPE + (0x1 << k), 666, MPI_COMM_WORLD);
-        }
-        else if ((myPE - root) < (0x1 << (k + 1))) {
-            // Receive the pivot
-            MPI_Recv(&pivot, 1, MPI_INT, myPE - (0x1 << k), 666, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+        if ((myPE - diffuseur) < (0x1 << i)) {
+            MPI_Send(&pivot, 1, MPI_INT, myPE + (0x1 << i), 666, MPI_COMM_WORLD);
+        } else if ((myPE - diffuseur) < (0x1 << (i + 1))) {
+            MPI_Recv(&pivot, 1, MPI_INT, myPE - (0x1 << i), 666, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
         }
     }
 }
 
-void quickSort(int*& data, int& taille) {
+/**
+ * Realise le quickSort en appelant toutes les fonctions
+ * @param data tableau global de données
+ * @param taille taille du tableau global
+ */
+void quickSort(int *&data, int &taille) {
     int p, myPE;
     MPI_Comm_size(MPI_COMM_WORLD, &p);
     MPI_Comm_rank(MPI_COMM_WORLD, &myPE);
@@ -148,19 +157,14 @@ void quickSort(int*& data, int& taille) {
 
     int dimension = log2(p);
     int pivot = 0;
-    int* dataInf = new int;
-    int* dataSup = new int;
+    int *dataInf = new int;
+    int *dataSup = new int;
     int tailleInf;
     int tailleSup;
     for (int i = dimension; i > 0; i--) {
-		  if (taille != 0) {
-            pivot = data[taille / 2];
-        }
-        
-		  diffusion(pivot, i, data, taille);
-        
-		  partition(pivot, data, taille, dataInf, tailleInf, dataSup, tailleSup);
-
+        diffusion(pivot, i, data, taille);
+        partition(pivot, data, taille, dataInf, tailleInf, dataSup, tailleSup);
+        //Si le bit est de poid faible
         if (!(myPE >> (i - 1) & 0x1)) {
             exchange(dataSup, tailleSup, i);
         } else {
@@ -171,23 +175,28 @@ void quickSort(int*& data, int& taille) {
     }
 }
 
-void printAll(int* data,int taille) {
-    int p,myPE;
-    MPI_Comm_size(MPI_COMM_WORLD,&p);
-    MPI_Comm_rank(MPI_COMM_WORLD,&myPE);
+/**
+ * Affiche le resultat du quickSort
+ * @param data tableau global de données
+ * @param taille taille du tableau global
+ */
+void printAll(int *data, int taille) {
+    int p, myPE;
+    MPI_Comm_size(MPI_COMM_WORLD, &p);
+    MPI_Comm_rank(MPI_COMM_WORLD, &myPE);
     int *recvcounts, *displs, *recvbuf;
     if (myPE == 0) recvcounts = new int[p];
-    MPI_Gather(&taille,1,MPI_INT,recvcounts,1,MPI_INT,0,MPI_COMM_WORLD);
+    MPI_Gather(&taille, 1, MPI_INT, recvcounts, 1, MPI_INT, 0, MPI_COMM_WORLD);
     if (myPE == 0) {
         displs = new int[p];
         displs[0] = 0;
-        for (int pe=1;pe<p;pe++) displs[pe] = displs[pe-1]+recvcounts[pe-1];
-        recvbuf = new int[displs[p-1]+recvcounts[p-1]];
+        for (int pe = 1; pe < p; pe++) displs[pe] = displs[pe - 1] + recvcounts[pe - 1];
+        recvbuf = new int[displs[p - 1] + recvcounts[p - 1]];
     }
-    MPI_Gatherv(data,taille,MPI_INT,recvbuf,recvcounts,displs,MPI_INT,0,MPI_COMM_WORLD);
+    MPI_Gatherv(data, taille, MPI_INT, recvbuf, recvcounts, displs, MPI_INT, 0, MPI_COMM_WORLD);
     if (myPE == 0)
-        for (int k=0;k<displs[p-1]+recvcounts[p-1];k++) cout << recvbuf[k] << endl;
-    if (myPE == 0) delete recvbuf,recvcounts,displs;
+        for (int k = 0; k < displs[p - 1] + recvcounts[p - 1]; k++) cout << recvbuf[k] << endl;
+    if (myPE == 0) delete recvbuf, recvcounts, displs;
 }
 
 
@@ -203,5 +212,24 @@ int main(int argc, char **argv) {
     quickSort(dataLoc, tailleLoc);
     printAll(dataLoc, tailleLoc);
     MPI_Finalize();
+    //Test fonction séquentiel
+    /*int pivot = 0;
+    int *dataInf = new int;
+    int *dataSup = new int;
+    int tailleInf;
+    int tailleSup;
+    int taille = 5;
+    int *data = new int[taille];
+    for (int i = 0; i < taille; i++) data[i] = i+1;
+    pivot = 3;
+    partition(pivot, data, taille, dataInf, tailleInf, dataSup, tailleSup);
+    for (int i = 0; i < tailleInf; i++) cout << dataInf[i] << endl;
+    cout << "Ok si ça affiche 1 2" << endl;
+    for (int i = 0; i < tailleSup; i++) cout << dataSup[i] << endl;
+    cout << "Ok si ça affiche 3 4 5" << endl;
+    dataSup[0] = 10;
+    reunion(dataInf, tailleInf, dataSup, tailleSup, data, taille);
+    for (int i = 0; i < taille; i++) cout << data[i] << endl;
+    cout << "Ok si ça affiche 1 2 10 4 5" << endl;*/
     return 0;
 }

@@ -172,6 +172,7 @@ void quickSort(int *&data, int &taille) {
         }
 
         reunion(dataInf, tailleInf, dataSup, tailleSup, data, taille);
+
     }
 }
 
@@ -199,6 +200,76 @@ void printAll(int *data, int taille) {
     if (myPE == 0) delete recvbuf, recvcounts, displs;
 }
 
+int random(int min, int max){
+    return rand()%(max-min + 1) + min;
+}
+
+void test_reunion(){
+    int size = random(10,1000);
+    auto *array1 = new int[size];
+    auto *array2 = new int[size];
+    for (int i = 0; i < size; ++i) {
+        array1[i] = i;
+        array2[i] = i+5;
+    }
+    auto *result = new int[size*2];
+    int size2 = size*2;
+    reunion(array1, size, array2, size, result, size2);
+    auto *resultMerge = new int[size*2];
+    merge (array1,array1+size,array2,array2+size,resultMerge);
+    if(equal(result, result+size2, resultMerge)){
+        cout << "reunion is ok" << endl;
+    }else {
+        cout << "reunion is not ok" << endl;
+    }
+}
+
+void test_partition(){
+    int pivot = random(10,1000);
+    int size = random(10,1000);
+    auto *array1 = new int[size];
+    auto *array2 = new int[size];
+    for (int i = 0; i < size; ++i) {
+        array1[i] = random(0, pivot-1);
+        array2[i] = random(pivot, 1000);
+    }
+    sort(array1, array1+size);
+    sort(array2, array2+size);
+    auto *resultMerge = new int[size*2];
+    merge (array1,array1+size,array2,array2+size,resultMerge);
+    auto *dataInf = new int;
+    auto *dataSup = new int;
+    int tailleInf;
+    int tailleSup;
+    partition(pivot, resultMerge, size*2, dataInf, tailleInf, dataSup, tailleSup);
+    cout << "partition ";
+    if(equal(array1, array1+size, dataInf)){
+        cout << "dataInf is ok" << endl;
+    }else {
+        cout << "dataInf is not ok" << endl;
+        for (int j = 0; j < tailleInf; ++j) {
+            cout << dataInf[j]  << "==" << array1[j] << endl;
+        }
+    }
+    cout << "partition ";
+    if(equal(array2, array2+size, dataSup)){
+        cout << "dataSup is ok" << endl;
+    }else {
+        cout << "dataSup is not ok" << endl;
+        for (int j = 0; j < tailleSup; ++j) {
+            cout << dataSup[j]  << "==" << array2[j] << endl;
+        }
+    }
+
+
+
+}
+
+void tests(){
+    /*test_reunion();
+    test_partition();*/
+}
+
 
 int main(int argc, char **argv) {
     MPI_Init(&argc, &argv);
@@ -212,24 +283,10 @@ int main(int argc, char **argv) {
     quickSort(dataLoc, tailleLoc);
     printAll(dataLoc, tailleLoc);
     MPI_Finalize();
-    //Test fonction séquentiel
-    /*int pivot = 0;
-    int *dataInf = new int;
-    int *dataSup = new int;
-    int tailleInf;
-    int tailleSup;
-    int taille = 5;
-    int *data = new int[taille];
-    for (int i = 0; i < taille; i++) data[i] = i+1;
-    pivot = 3;
-    partition(pivot, data, taille, dataInf, tailleInf, dataSup, tailleSup);
-    for (int i = 0; i < tailleInf; i++) cout << dataInf[i] << endl;
-    cout << "Ok si ça affiche 1 2" << endl;
-    for (int i = 0; i < tailleSup; i++) cout << dataSup[i] << endl;
-    cout << "Ok si ça affiche 3 4 5" << endl;
-    dataSup[0] = 10;
-    reunion(dataInf, tailleInf, dataSup, tailleSup, data, taille);
-    for (int i = 0; i < taille; i++) cout << data[i] << endl;
-    cout << "Ok si ça affiche 1 2 10 4 5" << endl;*/
+    if(myPE == 0){
+        tests();
+    }
     return 0;
 }
+
+
